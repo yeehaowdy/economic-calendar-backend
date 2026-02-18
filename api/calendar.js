@@ -50,9 +50,8 @@ app.get('/api/calendar', async (req, res) => {
   }
 });
 
-// --- 4. Szerver indítása ---
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`✅ A szerver fut a http://localhost:${PORT} címen`);
-  console.log(`📅 Naptár adatok itt: http://localhost:${PORT}/api/calendar`);
+  console.log(`Backend is running on http://localhost:${PORT}`);
+  console.log(`Calendar data: http://localhost:${PORT}/api/calendar`);
 });
