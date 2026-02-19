@@ -1,57 +1,52 @@
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import { initializeApp, getApps } from "firebase/app";
-import { initializeFirestore, collection, getDocs, query, orderBy } from "firebase/firestore";
+import { db } from '../db.js';
+import { collection, getDocs, query, orderBy } from "firebase/firestore";
 
-dotenv.config();
+export default async function handler(req, res) {
+    // Vercel alatt a CORS-t és a metódust manuálisan kezeljük
+    res.setHeader('Access-Control-Allow-Credentials', true);
+    res.setHeader('Access-Control-Allow-Origin', '*'); 
+    res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
 
-const app = express();
-app.use(cors());
-app.use(express.json());
+    // OPTIONS kérés kezelése (preflight)
+    if (req.method === 'OPTIONS') {
+        res.status(200).end();
+        return;
+    }
 
-// --- 1. Firebase Konfiguráció ---
-const firebaseConfig = {
-  apiKey: process.env.FIREBASE_API_KEY,
-  authDomain: process.env.FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.FIREBASE_PROJECT_ID,
-  storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.FIREBASE_APP_ID
-};
+    if (req.method !== 'GET') {
+        return res.status(405).json({ message: 'Method not allowed' });
+    }
 
-// --- 2. Firebase Inicializálás ---
-const firebaseApp = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-// Itt javítottam: a firebaseApp-ot kell átadni, nem az Express app-ot!
-const db = initializeFirestore(firebaseApp, { experimentalForceLongPolling: true });
+    try {
+        const calendarRef = collection(db, "calendar_events");
+        const q = query(calendarRef, orderBy("date", "asc"));
+        const querySnapshot = await getDocs(q);
+        
+        const events = [];
+        querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            
+            // Biztonságos dátumkezelés: 
+            // Ha a Firestore-ban Timestamp van, toDate()-et hívunk, ha sima string, hagyjuk.
+            let formattedDate = data.date;
+            if (data.date && typeof data.date.toDate === 'function') {
+                formattedDate = data.date.toDate().toISOString();
+            }
 
-// --- 3. Az API Route (Végpont) ---
-app.get('/api/calendar', async (req, res) => {
-  try {
-    const calendarRef = collection(db, "calendar_events");
-    const q = query(calendarRef, orderBy("date", "asc"));
-    const querySnapshot = await getDocs(q);
-    
-    const events = [];
-    querySnapshot.forEach((doc) => {
-      const data = doc.data();
-      // Biztonságos átalakítás ISO dátummá
-      events.push({ 
-        id: doc.id, 
-        ...data,
-        date: data.date?.toDate ? data.date.toDate().toISOString() : data.date 
-      });
-    });
+            events.push({ 
+                id: doc.id, 
+                ...data,
+                date: formattedDate
+            });
+        });
 
-    res.status(200).json(events);
-  } catch (error) {
-    console.error("Firebase Error:", error);
-    res.status(500).json({ error: "Szerver hiba történt", details: error.message });
-  }
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Backend is running on http://localhost:${PORT}`);
-  console.log(`Calendar data: http://localhost:${PORT}/api/calendar`);
-});
+        res.status(200).json(events);
+    } catch (error) {
+        console.error("Firebase Error a naptárnál:", error);
+        res.status(500).json({ 
+            error: "Szerver hiba történt az események lekérésekor", 
+            details: error.message 
+        });
+    }
+}
