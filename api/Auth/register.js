@@ -1,4 +1,4 @@
-import { auth, db } from '../db.js';
+import { auth, db } from '../../db.js';
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
 
