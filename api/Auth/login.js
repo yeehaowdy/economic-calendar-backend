@@ -12,7 +12,6 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 1. Keresés a Firestore-ban: a "displayName" mezőt hasonlítjuk a megadott username-hez
     const q = query(collection(db, "users"), where("displayName", "==", username));
     const querySnapshot = await getDocs(q);
 
