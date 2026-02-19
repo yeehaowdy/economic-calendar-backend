@@ -7,32 +7,43 @@ export default async function handler(req, res) {
 
   const { username, password } = req.body;
 
+  if (!username || !password) {
+    return res.status(400).json({ message: "Hiányzó adatok!" });
+  }
+
   try {
-    // 1. Megkeressük a felhasználó email címét a felhasználónév alapján a Firestore-ban
-    const q = query(collection(db, "users"), where("username", "==", username));
+    // 1. Keresés a Firestore-ban: a "displayName" mezőt hasonlítjuk a megadott username-hez
+    const q = query(collection(db, "users"), where("displayName", "==", username));
     const querySnapshot = await getDocs(q);
 
     if (querySnapshot.empty) {
       return res.status(401).json({ message: 'Hibás felhasználónév!' });
     }
 
-    // Megvan a felhasználó doksi
     const userDoc = querySnapshot.docs[0];
-    const email = userDoc.data().email;
+    const userData = userDoc.data();
+    const email = userData.email;
 
-    // 2. Bejelentkezés Firebase Auth-val
+    // 2. Bejelentkezés Firebase Auth-val (email + jelszó)
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
 
     return res.status(200).json({ 
       message: 'Sikeres belépés',
-      user: { id: user.uid, username: username } 
+      user: { 
+        id: user.uid, 
+        displayName: userData.displayName 
+      } 
     });
 
   } catch (error) {
     console.error("Belépési hiba:", error);
+    
     let üzenet = "Szerver hiba";
-    if (error.code === 'auth/wrong-password') üzenet = "Hibás jelszó!";
+    if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+      üzenet = "Hibás felhasználónév vagy jelszó!";
+    }
+    
     return res.status(401).json({ message: üzenet });
   }
 }
