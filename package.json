@@ -31,6 +31,7 @@
   },
   "homepage": "https://github.com/yeehaowdy/economic-calendar-backend#readme",
   "devDependencies": {
+    "@vitest/coverage-v8": "^4.1.1",
     "supertest": "^7.2.2",
     "vitest": "^4.1.1"
   }
