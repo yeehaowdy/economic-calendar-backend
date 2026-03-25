@@ -199,3 +199,6 @@ const Port = process.env.PORT || 3000;
 app.listen(Port, () => {
   console.log(`Backend is running on http://localhost:${Port}`);
 });
+
+//teszteléshez
+export default app;
